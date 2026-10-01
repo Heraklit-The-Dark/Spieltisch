@@ -1,0 +1,41 @@
+{
+  "name": "spieltisch-rhein-main",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PWA, die automatisch über neue Brettspiel-Events in Frankfurt und Rhein-Main informiert.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "check": "tsx scripts/run-check.ts",
+    "test": "tsx scripts/selftest.ts",
+    "vapid": "web-push generate-vapid-keys"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "cheerio": "^1.2.0",
+    "next": "15.5.27",
+    "node-ical": "^0.27.2",
+    "postgres": "^3.4.9",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "web-push": "^3.6.7",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/web-push": "^3.6.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "3.4.19",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

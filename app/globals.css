@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #ECF0EA;
+  --card: #FFFFFF;
+  --ink: #18241D;
+  --muted: #5B675F;
+  --line: #D3DBD3;
+  --felt: #1E5B43;
+  --felt-ink: #FFFFFF;
+  --felt-soft: #DCEBE2;
+  --signal: #E2AE12;
+  --danger: #B3261E;
+  --font-display: "Bricolage Grotesque", Georgia, serif;
+  --font-sans: "Atkinson Hyperlegible", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0E1A14;
+    --card: #16251D;
+    --ink: #E7EEE9;
+    --muted: #9AABA0;
+    --line: #29392F;
+    --felt: #3E9A6E;
+    --felt-ink: #06140D;
+    --felt-soft: #1B3328;
+    --signal: #F0C23A;
+    --danger: #F2827A;
+    color-scheme: dark;
+  }
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Spielplättchen: kräftige Kante wie ein gestanztes Pappteil */
+.tile {
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18), 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tile-drop {
+    animation: drop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  @keyframes drop {
+    from {
+      transform: translateY(-10px) rotate(-6deg);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+}
