@@ -1,8 +1,11 @@
 import webpush from "web-push";
 import { query, type EventRow, type Settings } from "@/lib/db";
 
+/** Adresse der App für Links in Nachrichten. Auf Vercel automatisch ermittelt. */
 export function appUrl(): string {
-  return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const fromVercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  const url = process.env.APP_URL ?? (fromVercel ? `https://${fromVercel}` : "http://localhost:3000");
+  return url.replace(/\/$/, "");
 }
 
 export function formatWhen(e: Pick<EventRow, "starts_at" | "time_known">): string {

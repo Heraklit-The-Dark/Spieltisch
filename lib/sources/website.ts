@@ -2,6 +2,16 @@ import * as cheerio from "cheerio";
 import type { Source } from "@/lib/db";
 import { MAX_TEXT_CHARS, politeFetch, type RawDocument, type SourceAdapter } from "./types";
 import { isAllowedByRobots } from "./robots";
+import { eventsFromJsonLd } from "@/lib/extract-free";
+
+/** schema.org-Blöcke (JSON-LD) aus dem HTML holen. */
+export function jsonLdBlocks(html: string): string[] {
+  const $ = cheerio.load(html);
+  return $('script[type="application/ld+json"]')
+    .map((_, el) => $(el).contents().text().trim())
+    .get()
+    .filter(Boolean);
+}
 
 /** Wandelt HTML in gut lesbaren Text um und behält Links als „Text [URL]“. */
 export function htmlToText(html: string, baseUrl: string): string {
@@ -55,6 +65,8 @@ export const websiteAdapter: SourceAdapter = {
     }
     const res = await politeFetch(source.url, { headers: { Accept: "text/html,application/xhtml+xml" } });
     const html = await res.text();
-    return [{ url: source.url, text: htmlToText(html, res.url || source.url), kind: "Webseite" }];
+    const pageUrl = res.url || source.url;
+    const structured = eventsFromJsonLd(jsonLdBlocks(html), source.city, pageUrl);
+    return [{ url: source.url, text: htmlToText(html, pageUrl), kind: "Webseite", events: structured.length ? structured : undefined }];
   },
 };

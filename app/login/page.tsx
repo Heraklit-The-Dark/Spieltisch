@@ -1,6 +1,8 @@
+import { authConfigured } from "@/lib/session";
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ fehler?: string; next?: string }> }) {
   const sp = await searchParams;
-  const configured = Boolean(process.env.APP_PASSWORD && process.env.SESSION_SECRET);
+  const configured = authConfigured();
   return (
     <main className="min-h-dvh flex flex-col justify-center px-6">
       <div className="flex gap-2 mb-6" aria-hidden>
@@ -13,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
       {!configured ? (
         <p className="mt-8 rounded-xl border border-line bg-card p-4">
-          Lege zuerst <code>APP_PASSWORD</code> und <code>SESSION_SECRET</code> in den Umgebungsvariablen fest. Die README erklärt wie.
+          Lege in Vercel unter „Environment Variables“ einen Eintrag mit dem Namen <code>APP_PASSWORD</code> und deinem Wunschpasswort an. Danach die App neu bereitstellen (Deployments → Redeploy).
         </p>
       ) : (
         <form action="/api/auth" method="post" className="mt-8 space-y-3">

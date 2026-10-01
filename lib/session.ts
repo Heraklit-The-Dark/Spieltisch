@@ -6,9 +6,22 @@
 export const SESSION_COOKIE = "st_session";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 180; // 180 Tage
 
+/**
+ * Geheimnis zum Signieren des Login-Cookies. Ist SESSION_SECRET nicht gesetzt,
+ * wird es aus dem Passwort abgeleitet – so reicht ein einziger Eintrag in Vercel.
+ * Ändert man das Passwort, werden dadurch alle bisherigen Logins ungültig.
+ */
+function sessionSecret(): string | null {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (process.env.APP_PASSWORD) return `spieltisch-session:${process.env.APP_PASSWORD}`;
+  return null;
+}
+
+export const authConfigured = () => Boolean(process.env.APP_PASSWORD);
+
 async function hmac(message: string): Promise<string> {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error("SESSION_SECRET fehlt.");
+  const secret = sessionSecret();
+  if (!secret) throw new Error("APP_PASSWORD fehlt.");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -20,7 +33,7 @@ export async function createSessionToken(): Promise<string> {
 }
 
 export async function verifySessionToken(token: string | undefined): Promise<boolean> {
-  if (!token || !process.env.SESSION_SECRET) return false;
+  if (!token || !sessionSecret()) return false;
   const [issued, sig] = token.split(".");
   if (!issued || !sig) return false;
   const age = Date.now() - parseInt(issued, 36);

@@ -2,6 +2,7 @@ import ical, { type VEvent } from "node-ical";
 import type { Source } from "@/lib/db";
 import { MAX_TEXT_CHARS, politeFetch, type RawDocument, type SourceAdapter } from "./types";
 import { isAllowedByRobots } from "./robots";
+import { eventsFromIcal, type IcalItem } from "@/lib/extract-free";
 
 const fmt = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
@@ -23,6 +24,7 @@ export const icalAdapter: SourceAdapter = {
     const now = Date.now();
     const horizon = now + 120 * 24 * 3600 * 1000;
     const blocks: string[] = [];
+    const items: IcalItem[] = [];
 
     for (const item of Object.values(data)) {
       if (!item || item.type !== "VEVENT") continue;
@@ -31,6 +33,18 @@ export const icalAdapter: SourceAdapter = {
       if (!start || start.getTime() < now - 6 * 3600 * 1000 || start.getTime() > horizon) continue;
       const end = ev.end ? new Date(ev.end as unknown as Date) : null;
       const str = (v: unknown) => (typeof v === "string" ? v : v && typeof v === "object" && "val" in v ? String((v as { val: unknown }).val) : "");
+
+      items.push({
+        summary: str(ev.summary),
+        start,
+        end,
+        dateOnly: (ev.start as unknown as { dateOnly?: boolean })?.dateOnly === true || ev.datetype === "date",
+        location: str(ev.location),
+        url: str(ev.url),
+        description: str(ev.description),
+        recurring: Boolean(ev.rrule),
+        cancelled: String(ev.status ?? "").toUpperCase() === "CANCELLED",
+      });
 
       blocks.push(
         [
@@ -49,6 +63,13 @@ export const icalAdapter: SourceAdapter = {
     }
 
     if (!blocks.length) return [];
-    return [{ url: source.url, text: blocks.join("\n\n---\n\n").slice(0, MAX_TEXT_CHARS), kind: "Kalender-Feed (iCal)" }];
+    return [
+      {
+        url: source.url,
+        text: blocks.join("\n\n---\n\n").slice(0, MAX_TEXT_CHARS),
+        kind: "Kalender-Feed (iCal)",
+        events: eventsFromIcal(items, source.city, source.url),
+      },
+    ];
   },
 };

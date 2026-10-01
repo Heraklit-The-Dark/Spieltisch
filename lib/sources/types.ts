@@ -1,12 +1,18 @@
 import type { Source } from "@/lib/db";
+import type { ExtractedEvent } from "@/lib/extract";
 
-/** Rohinhalt einer Quelle, der anschließend vom LLM in Events umgewandelt wird. */
+/** Rohinhalt einer Quelle, der anschließend in Events umgewandelt wird. */
 export interface RawDocument {
   url: string;
   /** Aufbereiteter Text inkl. Links im Format „Linktext [URL]“. */
   text: string;
-  /** Kurze Angabe zur Art des Inhalts, hilft dem LLM beim Einordnen. */
+  /** Kurze Angabe zur Art des Inhalts, hilft beim Einordnen. */
   kind: string;
+  /**
+   * Bereits strukturiert vorliegende Events (Kalender-Feed, schema.org-Daten der Website).
+   * Sind sie vorhanden, wird keine KI gebraucht.
+   */
+  events?: ExtractedEvent[];
 }
 
 /**

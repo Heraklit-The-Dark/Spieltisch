@@ -1,6 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { RawDocument } from "@/lib/sources";
+import { extractWithoutAI } from "@/lib/extract-free";
+
+/** Ist ein Claude-Schlüssel eingetragen? Ohne Schlüssel läuft die kostenlose Erkennung. */
+export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
 /** Das Event-Schema, das der LLM-Extraktor liefern muss. */
 export const ExtractedEvent = z.object({
@@ -91,6 +95,11 @@ export async function extractEvents(
   sourceName: string,
   sourceCity: string | null,
 ): Promise<{ events: ExtractedEvent[]; dropped: number }> {
+  // Strukturierte Daten (Kalender, schema.org) sind exakt – dafür braucht es keine KI.
+  // Ohne Claude-Schlüssel wird der Text kostenlos nach Datumszeilen durchsucht.
+  if (doc.events?.length || !aiEnabled()) {
+    return { events: extractWithoutAI(doc, sourceName, sourceCity), dropped: 0 };
+  }
   const today = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "full" }).format(new Date());
 
   const msg = await anthropic().messages.create({

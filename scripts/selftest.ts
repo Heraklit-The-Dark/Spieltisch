@@ -47,3 +47,28 @@ const ev = Object.values(parsed).find((x) => x?.type === "VEVENT") as any;
 assert.equal(ev.summary, "Board Game Night @ The Fizz");
 assert.equal(new Date(ev.start).toISOString(), "2026-10-20T17:00:00.000Z");
 console.log("✓ iCal-Parsing");
+
+// ───── Kostenlose Erkennung ─────
+import { eventsFromText, eventsFromJsonLd, berlinIso, parseLocalOrIso } from "../lib/extract-free";
+assert.equal(berlinIso(2026, 10, 14, 19, 0), "2026-10-14T17:00:00.000Z"); // Sommerzeit
+assert.equal(berlinIso(2026, 12, 4, 19, 0), "2026-12-04T18:00:00.000Z"); // Winterzeit
+assert.equal(parseLocalOrIso("2026-12-04T19:00")!.iso, "2026-12-04T18:00:00.000Z");
+
+const page = `Veranstaltungen
+Fr, 16.10. | 19:00 Uhr | Neuheiten-Abend: Spiele aus Essen Jetzt anmelden [https://laden.de/anmeldung]
+Samstag 24. Oktober ab 14 Uhr Catan-Turnier
+Öffnungszeiten: 10.10. geschlossen
+12.12.2026 Weihnachtsfeier der Buchhaltung`;
+const found = eventsFromText(page, "Testladen", "Frankfurt", "https://laden.de", new Date("2026-10-01T10:00:00Z"));
+assert.equal(found.length, 2, JSON.stringify(found.map(f => f.title)));
+assert.equal(found[0].title, "Neuheiten-Abend Spiele aus Essen");
+assert.equal(found[0].start, "2026-10-16T17:00:00.000Z");
+assert.equal(found[0].registration, "ja"); assert.equal(found[0].registration_url, "https://laden.de/anmeldung");
+assert.ok(found[0].is_novelty);
+assert.equal(found[1].start, "2026-10-24T12:00:00.000Z"); assert.ok(found[1].is_novelty); // Turnier
+console.log("✓ Kostenlose Erkennung aus Websitetext");
+
+const ld = eventsFromJsonLd([JSON.stringify({ "@context": "https://schema.org", "@graph": [{ "@type": "Event", name: "Spieleabend", startDate: "2026-11-05T19:00", location: { "@type": "Place", name: "Playce", address: { streetAddress: "Leipziger Str. 1", postalCode: "60487", addressLocality: "Frankfurt am Main" } }, offers: { price: 8, priceCurrency: "EUR", url: "https://playce.example/tickets" } }] })], null, "https://playce.example");
+assert.equal(ld.length, 1); assert.equal(ld[0].start, "2026-11-05T18:00:00.000Z"); assert.equal(ld[0].venue, "Playce");
+assert.equal(ld[0].registration_url, "https://playce.example/tickets"); assert.equal(ld[0].cost, "8 €");
+console.log("✓ schema.org-Events");

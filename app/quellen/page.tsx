@@ -2,6 +2,7 @@ import { isDbConfigured, query, queryOne, type RunLog, type Source } from "@/lib
 import { SetupNotice } from "@/components/SetupNotice";
 import { CheckNowButton } from "@/components/CheckNowButton";
 import { adapters } from "@/lib/sources";
+import { aiEnabled } from "@/lib/extract";
 import { addSource, deleteSource, toggleSource, updateSource } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,11 @@ export default async function SourcesPage() {
     <main className="px-4 pt-[max(env(safe-area-inset-top),1rem)]">
       <h1 className="font-display text-[2rem] leading-none font-extrabold">Quellen</h1>
       <p className="text-muted mt-2">Diese Seiten und Feeds werden täglich nach neuen Events durchsucht.</p>
+      <p className="text-sm mt-2 rounded-xl bg-felt-soft text-felt px-3 py-2">
+        {aiEnabled()
+          ? "Websites werden mit Claude ausgewertet."
+          : "Kostenlose Auswertung: Kalender-Feeds werden exakt gelesen, Websites nach Terminen mit Datum durchsucht."}
+      </p>
 
       <div className="mt-4">
         <CheckNowButton variant="full" />
