@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isDbConfigured, query, queryOne, type EventRow, type Source } from "@/lib/db";
 import { DateTile } from "@/components/DateTile";
 import { SetupNotice } from "@/components/SetupNotice";
+import { BackLink } from "@/components/BackLink";
 import { formatWhen } from "@/lib/notify";
 import { distanceFromFrankfurt } from "@/lib/geo";
 
@@ -18,6 +19,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const sources = await query<Pick<Source, "id" | "name">>("select id, name from sources where id = any($1::uuid[])", [e.source_ids]);
 
   const cancelled = e.status === "abgesagt";
+  const past = Date.parse(e.starts_at) < Date.now() - 3 * 3600 * 1000;
   const where = [e.venue, e.address, !e.address?.includes(e.city ?? "§") ? e.city : null].filter(Boolean).join(", ");
   const mapQuery = encodeURIComponent([e.venue, e.address, e.city].filter(Boolean).join(", "));
   const dist = distanceFromFrankfurt(e.city);
@@ -28,17 +30,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="px-4 pt-[max(env(safe-area-inset-top),1rem)]">
-      <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted h-10">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-        Alle Events
-      </Link>
+      <BackLink />
 
       <div className="flex gap-4 items-start mt-2">
-        <DateTile startsAt={e.starts_at} city={e.city} size="lg" cancelled={cancelled} />
+        <DateTile startsAt={e.starts_at} city={e.city} size="lg" cancelled={cancelled} past={past} />
         <div className="min-w-0">
           {cancelled && <p className="text-danger font-bold mb-1">Dieses Event wurde abgesagt.</p>}
+          {past && !cancelled && <p className="text-muted font-bold mb-1">Dieses Event ist vorbei.</p>}
           <h1 className={`font-display text-[1.75rem] leading-tight font-extrabold ${cancelled ? "line-through" : ""}`}>{e.title}</h1>
           {e.organizer && <p className="text-muted mt-1">{e.organizer}</p>}
         </div>
@@ -64,7 +62,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       </dl>
 
       <div className="mt-5 space-y-2">
-        {e.registration_url && !cancelled && (
+        {e.registration_url && !cancelled && !past && (
           <a href={e.registration_url} target="_blank" rel="noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-felt text-felt-ink font-bold text-lg">
             Zur Anmeldung
           </a>

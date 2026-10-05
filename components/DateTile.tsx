@@ -6,12 +6,15 @@ export function DateTile({
   city,
   size = "md",
   cancelled = false,
+  past = false,
   animate = false,
 }: {
   startsAt: string;
   city: string | null;
   size?: "md" | "lg";
   cancelled?: boolean;
+  /** Vergangenes Event: grau, aber nicht durchgestrichen. */
+  past?: boolean;
   animate?: boolean;
 }) {
   const d = new Date(startsAt);
@@ -19,7 +22,7 @@ export function DateTile({
   const weekday = new Intl.DateTimeFormat("de-DE", { ...tz, weekday: "short" }).format(d).replace(".", "");
   const day = new Intl.DateTimeFormat("de-DE", { ...tz, day: "numeric" }).format(d);
   const month = new Intl.DateTimeFormat("de-DE", { ...tz, month: "short" }).format(d).replace(".", "");
-  const color = cancelled ? { bg: "#8A8F8B", fg: "#FFFFFF" } : cityColor(city);
+  const color = cancelled || past ? { bg: "#8A8F8B", fg: "#FFFFFF" } : cityColor(city);
   const dims = size === "lg" ? "w-20 h-20 rounded-2xl" : "w-14 h-14 rounded-xl";
 
   return (
