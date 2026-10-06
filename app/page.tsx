@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isDbConfigured, query, type EventRow } from "@/lib/db";
+import { isDbConfigured, query, type EventRow, type Source } from "@/lib/db";
 import { DateTile } from "@/components/DateTile";
 import { CheckNowButton } from "@/components/CheckNowButton";
 import { SetupNotice } from "@/components/SetupNotice";
@@ -61,11 +61,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       const where = words
         .map(
           (_, i) =>
-            `concat_ws(' ', title, summary, description, venue, address, city, organizer) ilike $${i + 1}`,
+            // Auch der Name der Quelle zählt, damit z. B. „Terminal Entertainment“ alle Termine
+            // findet, die auf der T3-Website gefunden wurden – egal wo sie stattfinden.
+            `concat_ws(' ', e.title, e.summary, e.description, e.venue, e.address, e.city, e.organizer,
+               (select string_agg(s.name, ' ') from sources s where s.id = any(e.source_ids))) ilike $${i + 1}`,
         )
         .join(" and ");
       rows = await query<EventRow>(
-        `select * from events where ${where}
+        `select e.* from events e where ${where}
          order by (starts_at >= now() - interval '3 hours') desc,
                   case when starts_at >= now() - interval '3 hours' then starts_at end asc,
                   starts_at desc
@@ -80,6 +83,31 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   } catch (err) {
     error = err as Error;
   }
+
+  // Veranstalter für die Vorschläge beim Tippen und für die Info-Karte bei Treffern.
+  let organizers: Pick<Source, "name" | "url" | "city" | "type">[] = [];
+  let suggestions: string[] = [];
+  if (!error) {
+    try {
+      organizers = await query<Pick<Source, "name" | "url" | "city" | "type">>("select name, url, city, type from sources order by name");
+      const fromEvents = await query<{ n: string }>(
+        `select distinct n from (select organizer as n from events union select venue from events) x
+         where n is not null and length(n) between 3 and 60 order by n limit 200`,
+      );
+      // „Meetup: Gruppenname“ → im Vorschlag nur der Gruppenname
+      const clean = (n: string) => n.replace(/^(meetup|instagram|facebook):\s*/i, "").trim();
+      suggestions = Array.from(new Set([...organizers.map((o) => clean(o.name)), ...fromEvents.map((r) => r.n)])).sort((a, b) =>
+        a.localeCompare(b, "de"),
+      );
+    } catch {
+      /* Vorschläge sind optional */
+    }
+  }
+  const normalize = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  const qWords = normalize(q).split(/\s+/).filter(Boolean);
+  const matchedOrganizers = searching
+    ? organizers.filter((o) => qWords.every((w) => normalize(o.name).includes(w)))
+    : [];
 
   const isNew = (e: EventRow) => now.getTime() - Date.parse(e.first_seen_at) < NEW_WINDOW_MS;
   const isPast = (e: EventRow) => Date.parse(e.starts_at) < now.getTime() - PAST_GRACE_MS;
@@ -133,11 +161,17 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             name="q"
             type="search"
             defaultValue={q}
-            placeholder="Suchen, auch vergangene Events"
+            placeholder="Event oder Veranstalter suchen"
             enterKeyHint="search"
             autoComplete="off"
+            list="veranstalter"
             className="w-full h-12 rounded-xl border border-line bg-card pl-11 pr-24 text-base"
           />
+          <datalist id="veranstalter">
+            {suggestions.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
           {searching ? (
             <Link href="/" className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 px-3 rounded-lg text-sm font-bold text-muted flex items-center">
               Zurücksetzen
@@ -175,6 +209,31 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             : `${list.length === 100 ? "Mindestens 100" : list.length} Treffer zu „${q}“`}
         </p>
       )}
+
+      {matchedOrganizers.map((o) => {
+        // Für Menschen lesbare Seite: Meetup-Kalender → Gruppenseite, andere Feeds ohne Link.
+        const pageUrl = o.url.includes("<")
+          ? null
+          : o.type === "ical"
+            ? /meetup\.com/i.test(o.url)
+              ? o.url.replace(/events\/ical\/?$/i, "")
+              : null
+            : o.url;
+        return (
+          <div key={o.name} className="mx-4 mt-3 rounded-2xl bg-felt-soft px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-felt">Veranstalter</p>
+              <p className="font-display font-bold leading-snug">{o.name}</p>
+              {o.city && <p className="text-sm text-muted">{o.city}</p>}
+            </div>
+            {pageUrl && (
+              <a href={pageUrl} target="_blank" rel="noreferrer" className="shrink-0 h-9 px-3 rounded-lg bg-card border border-line text-sm font-bold flex items-center">
+                Website öffnen
+              </a>
+            )}
+          </div>
+        );
+      })}
 
       {error && <p className="mx-4 rounded-xl bg-card border border-danger text-danger p-3 text-sm">Events konnten nicht geladen werden: {error.message}</p>}
 
